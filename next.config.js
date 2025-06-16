@@ -27,10 +27,16 @@ const nextConfig = {
         buffer: false,
         events: false,
       };
-
+      
       // Exclude undici from client bundle
       config.externals = config.externals || [];
       config.externals.push('undici');
+      
+      // Add alias to completely prevent undici import
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'undici': false,
+      };
     }
     
     // Add rule for handling ES modules
@@ -41,10 +47,11 @@ const nextConfig = {
         fullySpecified: false,
       },
     });
-
+    
     return config;
   },
-  transpilePackages: ['undici'],
+  // REMOVE transpilePackages - this was causing the error!
+  // transpilePackages: ['undici'], 
   swcMinify: true,
 };
 
