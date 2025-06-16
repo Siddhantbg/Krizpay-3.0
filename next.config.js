@@ -1,15 +1,7 @@
-import { resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
     esmExternals: false,
-    optimizePackageImports: ['gsap', 'lucide-react']
   },
   webpack: (config, { isServer }) => {
     // Disable caching temporarily to fix ENOENT cache error
@@ -41,10 +33,10 @@ const nextConfig = {
       config.externals = config.externals || [];
       config.externals.push('undici');
       
-      // Add alias to completely prevent undici import and use our stub
+      // Add alias to completely prevent undici import
       config.resolve.alias = {
         ...config.resolve.alias,
-        'undici': resolve(__dirname, 'lib/undici-stub.js')
+        'undici': false,
       };
     }
     
@@ -57,15 +49,9 @@ const nextConfig = {
       },
     });
     
-    // Transpile GSAP for better compatibility
-    config.module.rules.push({
-      test: /node_modules\/gsap/,
-      sideEffects: false
-    });
-    
     return config;
   },
   swcMinify: true,
 };
 
-export default nextConfig;
+module.exports = nextConfig;

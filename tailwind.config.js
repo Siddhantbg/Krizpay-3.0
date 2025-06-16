@@ -1,7 +1,5 @@
-import type { Config } from 'tailwindcss';
-
-const config: Config = {
-  darkMode: ['class'],
+/** @type {import('tailwindcss').Config} */
+module.exports = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -68,6 +66,7 @@ const config: Config = {
         'primary-blue': '#3B82F6',
         'secondary-purple': '#A855F7',
         'secondary-blue': '#1D4ED8',
+        'primary-green': '#22C55E',
         'dark-bg': '#0F0F23',
         'dark-card': '#1A1A2E',
         'dark-border': '#16213E',
@@ -100,4 +99,3 @@ const config: Config = {
   },
   plugins: [require('tailwindcss-animate')],
 };
-export default config;
