@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -34,14 +34,15 @@ if (missingVars.length > 0) {
   console.log('API Key present:', !!firebaseConfig.apiKey);
 }
 
-// Initialize Firebase
+// Initialize Firebase - check if app already exists
 let app;
 let auth;
 let db;
 let storage;
 
 try {
-  app = initializeApp(firebaseConfig);
+  // Check if Firebase app is already initialized
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
