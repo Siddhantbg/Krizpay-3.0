@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
 import { 
   CreditCard, 
   Smartphone, 
@@ -15,10 +14,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// Register GSAP plugins
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
+// Dynamically import ScrollTrigger to avoid SSR issues
+let ScrollTrigger: any;
 
 const SeamlessPayments: React.FC = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -36,166 +33,180 @@ const SeamlessPayments: React.FC = () => {
   });
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      // Heading animation
-      gsap.fromTo(headingRef.current, 
-        { opacity: 0, y: 50 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 1,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: headingRef.current,
-            start: 'top 80%',
-            end: 'bottom 20%',
-            toggleActions: 'play none none reverse'
-          }
-        }
-      );
+    // Dynamically import and register ScrollTrigger
+    const setupAnimations = async () => {
+      const ScrollTriggerModule = await import('gsap/ScrollTrigger');
+      ScrollTrigger = ScrollTriggerModule.ScrollTrigger;
+      gsap.registerPlugin(ScrollTrigger);
 
-      // Feature cards stagger animation
-      if (cardsRef.current) {
-        const cards = cardsRef.current.children;
-        gsap.fromTo(cards,
-          { opacity: 0, y: 60, scale: 0.9 },
+      const ctx = gsap.context(() => {
+        // Heading animation
+        gsap.fromTo(headingRef.current, 
+          { opacity: 0, y: 50 },
           {
             opacity: 1,
             y: 0,
-            scale: 1,
-            duration: 0.8,
+            duration: 1,
             ease: 'power3.out',
-            stagger: 0.2,
             scrollTrigger: {
-              trigger: cardsRef.current,
-              start: 'top 75%',
-              end: 'bottom 25%',
+              trigger: headingRef.current,
+              start: 'top 80%',
+              end: 'bottom 20%',
               toggleActions: 'play none none reverse'
             }
           }
         );
 
-        // Card hover animations
-        Array.from(cards).forEach((card) => {
-          const handleMouseEnter = () => {
-            gsap.to(card, {
-              y: -10,
-              scale: 1.02,
-              duration: 0.3,
-              ease: 'power2.out'
-            });
-          };
-
-          const handleMouseLeave = () => {
-            gsap.to(card, {
+        // Feature cards stagger animation
+        if (cardsRef.current) {
+          const cards = cardsRef.current.children;
+          gsap.fromTo(cards,
+            { opacity: 0, y: 60, scale: 0.9 },
+            {
+              opacity: 1,
               y: 0,
               scale: 1,
-              duration: 0.3,
-              ease: 'power2.out'
-            });
-          };
-
-          card.addEventListener('mouseenter', handleMouseEnter);
-          card.addEventListener('mouseleave', handleMouseLeave);
-        });
-      }
-
-      // Phone mockup slide in from right
-      gsap.fromTo(phoneRef.current,
-        { opacity: 0, x: 100, rotateY: 15 },
-        {
-          opacity: 1,
-          x: 0,
-          rotateY: 0,
-          duration: 1.2,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: phoneRef.current,
-            start: 'top 80%',
-            end: 'bottom 20%',
-            toggleActions: 'play none none reverse'
-          }
-        }
-      );
-
-      // Statistics counter animation - Fixed for hydration
-      const transactionsCounter = { value: 0 };
-      const uptimeCounter = { value: 0 };
-      const speedCounter = { value: 0 };
-
-      gsap.to(transactionsCounter, {
-        value: 1000000,
-        duration: 2,
-        ease: 'power2.out',
-        onUpdate: function() {
-          setStatValues(prev => ({
-            ...prev,
-            transactions: Math.ceil(transactionsCounter.value)
-          }));
-        },
-        scrollTrigger: {
-          trigger: statsRef.current,
-          start: 'top 80%',
-          toggleActions: 'play none none none'
-        }
-      });
-
-      gsap.to(uptimeCounter, {
-        value: 99.9,
-        duration: 2,
-        ease: 'power2.out',
-        onUpdate: function() {
-          setStatValues(prev => ({
-            ...prev,
-            uptime: Math.round(uptimeCounter.value * 10) / 10
-          }));
-        },
-        scrollTrigger: {
-          trigger: statsRef.current,
-          start: 'top 80%',
-          toggleActions: 'play none none none'
-        }
-      });
-
-      gsap.to(speedCounter, {
-        value: 0.001,
-        duration: 2,
-        ease: 'power2.out',
-        onUpdate: function() {
-          setStatValues(prev => ({
-            ...prev,
-            speed: Math.round(speedCounter.value * 1000) / 1000
-          }));
-        },
-        scrollTrigger: {
-          trigger: statsRef.current,
-          start: 'top 80%',
-          toggleActions: 'play none none none'
-        }
-      });
-
-      // Background parallax elements
-      if (backgroundRef.current) {
-        const shapes = backgroundRef.current.children;
-        
-        Array.from(shapes).forEach((shape, index) => {
-          gsap.to(shape, {
-            y: -50 - index * 20,
-            rotation: 180 + index * 45,
-            ease: 'none',
-            scrollTrigger: {
-              trigger: sectionRef.current,
-              start: 'top bottom',
-              end: 'bottom top',
-              scrub: 1 + index * 0.3
+              duration: 0.8,
+              ease: 'power3.out',
+              stagger: 0.2,
+              scrollTrigger: {
+                trigger: cardsRef.current,
+                start: 'top 75%',
+                end: 'bottom 25%',
+                toggleActions: 'play none none reverse'
+              }
             }
+          );
+
+          // Card hover animations
+          Array.from(cards).forEach((card) => {
+            const handleMouseEnter = () => {
+              gsap.to(card, {
+                y: -10,
+                scale: 1.02,
+                duration: 0.3,
+                ease: 'power2.out'
+              });
+            };
+
+            const handleMouseLeave = () => {
+              gsap.to(card, {
+                y: 0,
+                scale: 1,
+                duration: 0.3,
+                ease: 'power2.out'
+              });
+            };
+
+            card.addEventListener('mouseenter', handleMouseEnter);
+            card.addEventListener('mouseleave', handleMouseLeave);
           });
+        }
+
+        // Phone mockup slide in from right
+        gsap.fromTo(phoneRef.current,
+          { opacity: 0, x: 100, rotateY: 15 },
+          {
+            opacity: 1,
+            x: 0,
+            rotateY: 0,
+            duration: 1.2,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: phoneRef.current,
+              start: 'top 80%',
+              end: 'bottom 20%',
+              toggleActions: 'play none none reverse'
+            }
+          }
+        );
+
+        // Statistics counter animation - Fixed for hydration
+        const transactionsCounter = { value: 0 };
+        const uptimeCounter = { value: 0 };
+        const speedCounter = { value: 0 };
+
+        gsap.to(transactionsCounter, {
+          value: 1000000,
+          duration: 2,
+          ease: 'power2.out',
+          onUpdate: function() {
+            setStatValues(prev => ({
+              ...prev,
+              transactions: Math.ceil(transactionsCounter.value)
+            }));
+          },
+          scrollTrigger: {
+            trigger: statsRef.current,
+            start: 'top 80%',
+            toggleActions: 'play none none none'
+          }
         });
-      }
 
-    }, sectionRef);
+        gsap.to(uptimeCounter, {
+          value: 99.9,
+          duration: 2,
+          ease: 'power2.out',
+          onUpdate: function() {
+            setStatValues(prev => ({
+              ...prev,
+              uptime: Math.round(uptimeCounter.value * 10) / 10
+            }));
+          },
+          scrollTrigger: {
+            trigger: statsRef.current,
+            start: 'top 80%',
+            toggleActions: 'play none none none'
+          }
+        });
 
-    return () => ctx.revert();
+        gsap.to(speedCounter, {
+          value: 0.001,
+          duration: 2,
+          ease: 'power2.out',
+          onUpdate: function() {
+            setStatValues(prev => ({
+              ...prev,
+              speed: Math.round(speedCounter.value * 1000) / 1000
+            }));
+          },
+          scrollTrigger: {
+            trigger: statsRef.current,
+            start: 'top 80%',
+            toggleActions: 'play none none none'
+          }
+        });
+
+        // Background parallax elements
+        if (backgroundRef.current) {
+          const shapes = backgroundRef.current.children;
+          
+          Array.from(shapes).forEach((shape, index) => {
+            gsap.to(shape, {
+              y: -50 - index * 20,
+              rotation: 180 + index * 45,
+              ease: 'none',
+              scrollTrigger: {
+                trigger: sectionRef.current,
+                start: 'top bottom',
+                end: 'bottom top',
+                scrub: 1 + index * 0.3
+              }
+            });
+          });
+        }
+
+      }, sectionRef);
+
+      return () => {
+        ctx.revert();
+        if (ScrollTrigger) {
+          ScrollTrigger.getAll().forEach((trigger: any) => trigger.kill());
+        }
+      };
+    };
+
+    setupAnimations();
   }, []);
 
   const features = [

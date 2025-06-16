@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://krizpay.com'),
   title: 'KrizPay - The Future of Decentralized Finance',
   description: 'Experience lightning-fast, secure blockchain payments with KrizPay. Revolutionary DeFi solutions for the modern world with bank-grade security and global reach.',
   keywords: 'blockchain, cryptocurrency, DeFi, digital payments, fintech, KrizPay, decentralized finance, crypto wallet, payment gateway',
