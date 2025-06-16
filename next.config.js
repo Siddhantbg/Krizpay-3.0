@@ -4,6 +4,9 @@ const nextConfig = {
     esmExternals: false,
   },
   webpack: (config, { isServer }) => {
+    // Disable caching temporarily to fix ENOENT cache error
+    config.cache = false;
+    
     // Fix for undici module parsing error
     if (!isServer) {
       config.resolve.fallback = {
