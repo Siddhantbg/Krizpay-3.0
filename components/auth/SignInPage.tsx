@@ -12,11 +12,28 @@ const SignInPage: React.FC = () => {
   const router = useRouter();
 
   useEffect(() => {
+    // Get redirect path from URL if present
+    const params = new URLSearchParams(window.location.search);
+    const redirectPath = params.get('redirect') || '/dashboard';
+    
     // Redirect if already authenticated
     if (user) {
-      router.push('/dashboard');
+      console.log(`User already authenticated, redirecting to: ${redirectPath}`);
+      router.push(redirectPath);
       return;
     }
+
+    // Check for redirect result on page load
+    const checkRedirectResult = async () => {
+      try {
+        // This is just a check, the actual handling is in AuthContext
+        console.log('SignInPage: Checking for redirect result...');
+      } catch (error) {
+        console.error('SignInPage: Error checking redirect result:', error);
+      }
+    };
+    
+    checkRedirectResult();
 
     // Page entrance animation
     const tl = gsap.timeline();

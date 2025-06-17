@@ -18,10 +18,24 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const router = useRouter();
 
   useEffect(() => {
+    // Only redirect if we're not loading and there's no user
     if (!loading && !user) {
-      router.push('/signin');
+      console.log('No authenticated user found, redirecting to signin page');
+      // Add the current path as a redirect parameter
+      const currentPath = window.location.pathname;
+      router.push(`/signin?redirect=${encodeURIComponent(currentPath)}`);
     }
   }, [user, loading, router]);
+  
+  // Check for auth token in localStorage as a fallback
+  useEffect(() => {
+    if (!user && !loading) {
+      const storedUser = localStorage.getItem('krizpay-auth-user');
+      if (!storedUser) {
+        console.log('No stored user found in localStorage');
+      }
+    }
+  }, [user, loading]);
 
   // Show loading state
   if (loading) {

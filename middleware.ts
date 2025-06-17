@@ -19,18 +19,31 @@ export function middleware(request: NextRequest) {
     pathname === route || pathname.startsWith(route)
   );
 
-  // Get auth token from cookies (you might need to adjust this based on your auth implementation)
+  // Check for authentication in multiple places
+  // 1. Check Firebase auth cookie if present
+  const firebaseAuthCookie = request.cookies.get('firebase-auth-token')?.value;
+  // 2. Check our custom auth cookie
   const authToken = request.cookies.get('auth-token')?.value;
-
-  // If accessing a protected route without auth token, redirect to signin
-  if (isProtectedRoute && !authToken) {
+  // 3. Check for session cookie
+  const sessionCookie = request.cookies.get('__session')?.value;
+  
+  // Determine if user is authenticated based on any valid token
+  const isAuthenticated = !!(firebaseAuthCookie || authToken || sessionCookie);
+  
+  // For debugging
+  console.log(`Middleware: Path=${pathname}, Protected=${isProtectedRoute}, Auth=${isAuthenticated}`);
+  
+  // If accessing a protected route without authentication, redirect to signin
+  if (isProtectedRoute && !isAuthenticated) {
+    console.log(`Redirecting unauthenticated user from ${pathname} to signin`);
     const signInUrl = new URL('/signin', request.url);
     signInUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(signInUrl);
   }
 
   // If accessing signin page while authenticated, redirect to dashboard
-  if (pathname === '/signin' && authToken) {
+  if (pathname === '/signin' && isAuthenticated) {
+    console.log('Redirecting authenticated user from signin to dashboard');
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
