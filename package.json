@@ -2,7 +2,6 @@
   "name": "nextjs",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -40,7 +39,6 @@
     "@radix-ui/react-toggle-group": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
     "@types/react-dom": "18.2.7",
-    "autoprefixer": "10.4.15",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -55,7 +53,6 @@
     "lucide-react": "^0.446.0",
     "next": "13.5.1",
     "next-themes": "^0.3.0",
-    "postcss": "^8.5.6",
     "react": "18.2.0",
     "react-day-picker": "^8.10.1",
     "react-dom": "18.2.0",
@@ -64,7 +61,7 @@
     "recharts": "^2.12.7",
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.2",
-    "tailwindcss": "^4.1.10",
+    "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
     "zod": "^3.23.8"
   },
@@ -77,11 +74,14 @@
     "@types/gsap": "^3.0.0",
     "@types/node": "24.0.3",
     "@types/react": "19.1.8",
+    "autoprefixer": "^10.4.21",
     "babel-loader": "^10.0.0",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.1",
+    "postcss": "^8.5.6",
     "process": "^0.11.10",
     "stream-browserify": "^3.0.0",
+    "tailwindcss": "^3.4.17",
     "typescript": "5.8.3"
   }
 }
