@@ -4,10 +4,25 @@
   "description": "Experience lightning-fast, secure blockchain payments with KrizPay. Revolutionary DeFi solutions for the modern world.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F0F23",
+  "background_color": "#1F2937",
   "theme_color": "#8B5CF6",
   "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["finance", "business", "productivity", "lifestyle"],
+  "prefer_related_applications": false,
   "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
@@ -19,9 +34,75 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
-  "categories": ["finance", "business", "productivity"],
-  "lang": "en",
-  "dir": "ltr"
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open KrizPay Dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Sign In",
+      "short_name": "Sign In",
+      "description": "Sign in to KrizPay",
+      "url": "/signin",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Send Money",
+      "short_name": "Send",
+      "description": "Send money instantly",
+      "url": "/send",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-desktop.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "KrizPay Dashboard - Desktop View"
+    },
+    {
+      "src": "/screenshot-mobile.jpg",
+      "sizes": "390x844",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "KrizPay Dashboard - Mobile View"
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+krizpay",
+      "url": "/pay?to=%s"
+    }
+  ]
 }

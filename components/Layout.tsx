@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   Menu, 
   X, 
-  Zap, 
   Shield, 
   Users, 
   TrendingUp,
@@ -196,13 +196,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         role="banner"
       >
         <nav className="max-w-7xl mx-auto flex items-center justify-between" role="navigation" aria-label="Main navigation">
-          {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg hero-gradient flex items-center justify-center shadow-lg shadow-primary-purple/20">
-              <Zap className="w-5 h-5 text-white" aria-hidden="true" />
+          {/* UPDATED: Logo with KrizPay.svg */}
+          <a href="/" className="flex items-center space-x-3 transition-transform duration-300 hover:scale-105">
+            <div className="w-10 h-10 rounded-lg hero-gradient flex items-center justify-center shadow-lg shadow-primary-purple/20">
+              <Image
+                src="/KrizPay.svg"
+                alt="KrizPay Logo"
+                width={24}
+                height={24}
+                priority
+                className="w-6 h-6 object-contain brightness-0 invert"
+              />
             </div>
             <span className="text-xl font-bold gradient-text">KrizPay</span>
-          </div>
+          </a>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
@@ -328,14 +335,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <footer className="bg-dark-card border-t border-dark-border" role="contentinfo">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-            {/* Company Info */}
+            {/* UPDATED: Company Info with KrizPay.svg */}
             <div className="lg:col-span-1 space-y-6">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-lg hero-gradient flex items-center justify-center shadow-lg shadow-primary-purple/20">
-                  <Zap className="w-5 h-5 text-white" aria-hidden="true" />
+              <a href="/" className="flex items-center space-x-3 transition-transform duration-300 hover:scale-105">
+                <div className="w-10 h-10 rounded-lg hero-gradient flex items-center justify-center shadow-lg shadow-primary-purple/20">
+                  <Image
+                    src="/KrizPay.svg"
+                    alt="KrizPay Logo"
+                    width={24}
+                    height={24}
+                    className="w-6 h-6 object-contain brightness-0 invert"
+                  />
                 </div>
                 <span className="text-xl font-bold gradient-text">KrizPay</span>
-              </div>
+              </a>
               <p className="text-text-secondary text-sm leading-relaxed">
                 Revolutionizing payments with blockchain technology. Fast, secure, and decentralized financial solutions for the modern world.
               </p>

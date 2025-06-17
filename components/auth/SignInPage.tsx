@@ -3,9 +3,23 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Zap, Chrome, Shield, ArrowRight, AlertCircle, ExternalLink } from 'lucide-react';
+import { Chrome, Shield, ArrowRight, AlertCircle, ExternalLink, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { gsap } from 'gsap';
+
+// Custom KrizPay Logo Component
+const KrizPayLogo = ({ size = 24, className = "" }) => {
+  return (
+    <img 
+      src="/KrizPay.svg" 
+      alt="KrizPay Logo"
+      width={size}
+      height={size}
+      className={`object-contain ${className}`}
+      style={{ filter: 'brightness(0) invert(1)' }} // Makes it white to match the design
+    />
+  );
+};
 
 const SignInPage: React.FC = () => {
   const { user, loading, error, signInWithGoogle, clearError, isRedirecting } = useAuth();
@@ -63,7 +77,7 @@ const SignInPage: React.FC = () => {
       description: 'Your data is protected with enterprise-level encryption'
     },
     {
-      icon: Zap,
+      icon: Zap, // Keep Zap for "Lightning Fast" feature - it makes sense
       title: 'Lightning Fast',
       description: 'Process transactions in milliseconds, not minutes'
     },
@@ -106,8 +120,9 @@ const SignInPage: React.FC = () => {
           {/* Logo & Brand */}
           <div className="space-y-6">
             <div className="flex items-center space-x-3">
+              {/* UPDATED: Purple container with your custom KrizPay logo */}
               <div className="w-12 h-12 rounded-2xl hero-gradient flex items-center justify-center shadow-lg shadow-primary-purple/20">
-                <Zap className="w-7 h-7 text-white" />
+                <KrizPayLogo size={28} />
               </div>
               <div>
                 <h1 className="text-3xl font-bold gradient-text">KrizPay</h1>
@@ -149,9 +164,15 @@ const SignInPage: React.FC = () => {
         <div className="flex justify-center lg:justify-end">
           <div className="signin-card w-full max-w-md bg-gray-900/50 backdrop-blur-xl rounded-3xl p-8 border border-primary-purple/20 shadow-2xl opacity-0">
             <div className="space-y-8">
-              {/* Header */}
-              <div className="text-center space-y-2">
-                <h3 className="text-2xl font-bold text-white">Sign In</h3>
+              {/* Header with Logo */}
+              <div className="text-center space-y-4">
+                {/* UPDATED: Large KrizPay logo in the sign-in card header */}
+                <div className="flex justify-center">
+                  <div className="w-16 h-16 rounded-2xl hero-gradient flex items-center justify-center shadow-lg shadow-primary-purple/20">
+                    <KrizPayLogo size={36} />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold text-white">Sign In to KrizPay</h3>
                 <p className="text-text-secondary">
                   Get started with your KrizPay account
                 </p>
@@ -233,7 +254,7 @@ const SignInPage: React.FC = () => {
                       Smart Authentication Mode
                     </p>
                     <p className="text-green-300 text-xs mt-1">
-                      Popup first, then secure redirect if needed. No COOP issues! 🎉
+                      Secure redirect authentication - No COOP issues! 🎉
                     </p>
                   </div>
                 </div>
