@@ -7,7 +7,7 @@ const nextConfig = {
     // Disable caching temporarily to fix ENOENT cache error
     config.cache = false;
     
-    // Fix for undici module parsing error
+    // Fix for undici module parsing error and Firebase compatibility
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -27,16 +27,21 @@ const nextConfig = {
         buffer: false,
         events: false,
         encoding: false,
+        // Add these for Firebase compatibility
+        'node-fetch': false,
+        'whatwg-fetch': false,
       };
       
-      // Exclude undici from client bundle
+      // Exclude problematic modules from client bundle
       config.externals = config.externals || [];
-      config.externals.push('undici');
+      config.externals.push('undici', 'encoding', 'node-fetch');
       
-      // Add alias to completely prevent undici import
+      // Add alias to completely prevent problematic imports
       config.resolve.alias = {
         ...config.resolve.alias,
         'undici': false,
+        'encoding': false,
+        'node-fetch': false,
       };
     }
     
@@ -49,9 +54,18 @@ const nextConfig = {
       },
     });
     
+    // Ignore node-fetch warnings
+    config.ignoreWarnings = [
+      { module: /node-fetch/ },
+      { file: /node_modules\/node-fetch/ },
+    ];
+    
     return config;
   },
   swcMinify: true,
+  
+  // Additional configuration for better compatibility
+  transpilePackages: ['firebase'],
 };
 
 module.exports = nextConfig;
