@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { 
   User, 
-  signInWithPopup, 
   signInWithRedirect,
   getRedirectResult,
   signOut as firebaseSignOut, 
@@ -18,10 +17,10 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
-  signInWithGoogle: () => Promise<UserCredential | null>;
-  signInWithGoogleRedirect: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>; // Changed to redirect only
   signOut: () => Promise<void>;
   clearError: () => void;
+  isRedirecting: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,12 +41,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log('Auth state changed:', user?.email || 'No user');
       setUser(user);
       setLoading(false);
+      setIsRedirecting(false); // Stop redirecting state when auth state changes
       
       // Store auth state in localStorage for persistence
       if (user) {
@@ -65,7 +67,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Handle redirect result when app loads
     const handleRedirectResult = async () => {
       try {
+        console.log('Checking for redirect result...');
         const result = await getRedirectResult(auth);
+        
         if (result) {
           console.log('Redirect sign-in successful:', result.user);
           
@@ -78,84 +82,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             localStorage.setItem('krizpay-auth-token', token);
           }
           
+          // Clear any existing errors
+          setError(null);
+          
           // Redirect to dashboard after successful sign-in
+          console.log('Redirecting to dashboard...');
           router.push('/dashboard');
+        } else {
+          console.log('No redirect result found');
         }
       } catch (error: any) {
         console.error('Redirect result error:', error);
         setError('Failed to complete sign-in. Please try again.');
+        setIsRedirecting(false);
       }
     };
 
-    handleRedirectResult();
+    // Check for redirect result after a small delay to ensure auth is initialized
+    const timeoutId = setTimeout(handleRedirectResult, 100);
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(timeoutId);
+    };
   }, [router]);
 
-  // Popup method (may have COOP issues)
-  const signInWithGoogle = async (): Promise<UserCredential | null> => {
+  // ONLY REDIRECT METHOD - NO POPUP TO AVOID COOP ISSUES
+  const signInWithGoogle = async (): Promise<void> => {
     try {
-      setLoading(true);
       setError(null);
-      
-      // Configure provider for popup
-      googleProvider.setCustomParameters({
-        prompt: 'select_account'
-      });
-      
-      const result = await signInWithPopup(auth, googleProvider);
-      
-      // Get additional user info
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential?.accessToken;
-      
-      // Store additional auth info if needed
-      if (token) {
-        localStorage.setItem('krizpay-auth-token', token);
-      }
-      
-      // Redirect to dashboard after successful sign-in
-      router.push('/dashboard');
-      
-      return result;
-    } catch (error: any) {
-      console.error('Google sign-in error:', error);
-      
-      // Handle specific Firebase Auth errors
-      switch (error.code) {
-        case 'auth/popup-closed-by-user':
-          setError('Sign-in was cancelled. Please try again or use the redirect method.');
-          break;
-        case 'auth/popup-blocked':
-          setError('Pop-up was blocked. Please allow pop-ups or use the redirect method.');
-          break;
-        case 'auth/network-request-failed':
-          setError('Network error. Please check your connection and try again.');
-          break;
-        case 'auth/too-many-requests':
-          setError('Too many failed attempts. Please try again later.');
-          break;
-        default:
-          // Check if it's a COOP-related error
-          if (error.message.includes('Cross-Origin-Opener-Policy') || 
-              error.message.includes('window.closed')) {
-            setError('Browser security settings are blocking the popup. Please use the redirect sign-in method instead.');
-          } else {
-            setError('Failed to sign in. Please try the redirect method or try again later.');
-          }
-      }
-      
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Redirect method (recommended, no COOP issues)
-  const signInWithGoogleRedirect = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      setError(null);
+      setIsRedirecting(true);
       
       console.log('Initiating Google sign-in with redirect...');
       
@@ -165,13 +121,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         redirect_uri: window.location.origin
       });
       
+      // Add additional scopes if needed
+      googleProvider.addScope('profile');
+      googleProvider.addScope('email');
+      
       await signInWithRedirect(auth, googleProvider);
+      
       // User will be redirected to Google, then back to your app
       // The result will be handled in the useEffect above
+      console.log('Redirect initiated successfully');
+      
     } catch (error: any) {
       console.error('Google redirect sign-in error:', error);
       setError('Failed to initiate sign-in. Please try again.');
-      setLoading(false);
+      setIsRedirecting(false);
     }
   };
 
@@ -185,6 +148,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Clear stored auth data
       localStorage.removeItem('krizpay-auth-user');
       localStorage.removeItem('krizpay-auth-token');
+      
+      console.log('Sign-out successful');
       
       // Redirect to home page
       router.push('/');
@@ -204,10 +169,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     loading,
     error,
-    signInWithGoogle, // Popup method (with COOP handling)
-    signInWithGoogleRedirect, // Redirect method (recommended)
+    signInWithGoogle, // Now only uses redirect (NO COOP ISSUES)
     signOut,
     clearError,
+    isRedirecting,
   };
 
   return (

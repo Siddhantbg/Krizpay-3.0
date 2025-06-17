@@ -3,12 +3,12 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Zap, Chrome, Shield, ArrowRight, AlertCircle } from 'lucide-react';
+import { Zap, Chrome, Shield, ArrowRight, AlertCircle, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { gsap } from 'gsap';
 
 const SignInPage: React.FC = () => {
-  const { user, loading, error, signInWithGoogle, clearError } = useAuth();
+  const { user, loading, error, signInWithGoogle, clearError, isRedirecting } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -59,6 +59,9 @@ const SignInPage: React.FC = () => {
       description: 'Send money anywhere in the world instantly'
     }
   ];
+
+  // Determine loading state (either general loading or redirecting)
+  const isLoading = loading || isRedirecting;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-bg via-gray-900 to-dark-bg flex items-center justify-center p-4">
@@ -132,6 +135,24 @@ const SignInPage: React.FC = () => {
                   <div>
                     <p className="text-red-400 text-sm font-medium">Sign-in Error</p>
                     <p className="text-red-300 text-sm mt-1">{error}</p>
+                    {error.includes('Cross-Origin-Opener-Policy') && (
+                      <p className="text-red-300 text-xs mt-2">
+                        This should be fixed now with redirect authentication.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Redirecting Notice */}
+              {isRedirecting && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-start space-x-3">
+                  <ExternalLink className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-blue-400 text-sm font-medium">Redirecting to Google</p>
+                    <p className="text-blue-300 text-sm mt-1">
+                      You'll be redirected to Google's secure sign-in page...
+                    </p>
                   </div>
                 </div>
               )}
@@ -139,10 +160,15 @@ const SignInPage: React.FC = () => {
               {/* Google Sign In Button */}
               <Button
                 onClick={handleGoogleSignIn}
-                disabled={loading}
+                disabled={isLoading}
                 className="w-full h-14 bg-white hover:bg-gray-50 text-gray-900 font-semibold text-lg rounded-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg hover:shadow-xl"
               >
-                {loading ? (
+                {isRedirecting ? (
+                  <div className="flex items-center space-x-3">
+                    <div className="w-5 h-5 border-2 border-gray-400 border-t-gray-900 rounded-full animate-spin"></div>
+                    <span>Redirecting to Google...</span>
+                  </div>
+                ) : loading ? (
                   <div className="flex items-center space-x-3">
                     <div className="w-5 h-5 border-2 border-gray-400 border-t-gray-900 rounded-full animate-spin"></div>
                     <span>Signing in...</span>
@@ -162,7 +188,7 @@ const SignInPage: React.FC = () => {
                 </div>
                 <div className="relative flex justify-center text-sm">
                   <span className="px-4 bg-gray-900/50 text-text-secondary">
-                    Secure authentication powered by Google
+                    Secure redirect authentication (no popup issues)
                   </span>
                 </div>
               </div>
@@ -178,6 +204,16 @@ const SignInPage: React.FC = () => {
                       Your information is never shared with third parties.
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Authentication Method Notice */}
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3">
+                <div className="flex items-start space-x-2">
+                  <ExternalLink className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-green-400 text-xs">
+                    <strong>Redirect Authentication:</strong> You'll be safely redirected to Google's secure sign-in page, then brought back to complete your login.
+                  </p>
                 </div>
               </div>
 

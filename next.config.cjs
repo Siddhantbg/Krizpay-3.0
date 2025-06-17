@@ -3,6 +3,30 @@ const nextConfig = {
   experimental: {
     esmExternals: false,
   },
+  
+  // CRITICAL: Add headers to fix COOP issues
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups'
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy', 
+            value: 'unsafe-none'
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'cross-origin'
+          }
+        ],
+      },
+    ];
+  },
+  
   webpack: (config, { isServer }) => {
     // Disable caching temporarily to fix ENOENT cache error
     config.cache = false;
