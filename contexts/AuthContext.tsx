@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { 
   User, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut, 
   onAuthStateChanged,
   GoogleAuthProvider,
@@ -17,6 +19,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<UserCredential | null>;
+  signInWithGoogleRedirect: () => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
@@ -59,13 +62,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     });
 
-    return () => unsubscribe();
-  }, []);
+    // Handle redirect result when app loads
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log('Redirect sign-in successful:', result.user);
+          
+          // Get additional user info
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          const token = credential?.accessToken;
+          
+          // Store additional auth info if needed
+          if (token) {
+            localStorage.setItem('krizpay-auth-token', token);
+          }
+          
+          // Redirect to dashboard after successful sign-in
+          router.push('/dashboard');
+        }
+      } catch (error: any) {
+        console.error('Redirect result error:', error);
+        setError('Failed to complete sign-in. Please try again.');
+      }
+    };
 
+    handleRedirectResult();
+
+    return () => unsubscribe();
+  }, [router]);
+
+  // Popup method (may have COOP issues)
   const signInWithGoogle = async (): Promise<UserCredential | null> => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Configure provider for popup
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      });
       
       const result = await signInWithPopup(auth, googleProvider);
       
@@ -88,10 +124,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Handle specific Firebase Auth errors
       switch (error.code) {
         case 'auth/popup-closed-by-user':
-          setError('Sign-in was cancelled. Please try again.');
+          setError('Sign-in was cancelled. Please try again or use the redirect method.');
           break;
         case 'auth/popup-blocked':
-          setError('Pop-up was blocked. Please allow pop-ups and try again.');
+          setError('Pop-up was blocked. Please allow pop-ups or use the redirect method.');
           break;
         case 'auth/network-request-failed':
           setError('Network error. Please check your connection and try again.');
@@ -100,11 +136,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setError('Too many failed attempts. Please try again later.');
           break;
         default:
-          setError('Failed to sign in. Please try again.');
+          // Check if it's a COOP-related error
+          if (error.message.includes('Cross-Origin-Opener-Policy') || 
+              error.message.includes('window.closed')) {
+            setError('Browser security settings are blocking the popup. Please use the redirect sign-in method instead.');
+          } else {
+            setError('Failed to sign in. Please try the redirect method or try again later.');
+          }
       }
       
       return null;
     } finally {
+      setLoading(false);
+    }
+  };
+
+  // Redirect method (recommended, no COOP issues)
+  const signInWithGoogleRedirect = async (): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Initiating Google sign-in with redirect...');
+      
+      // Configure provider for redirect
+      googleProvider.setCustomParameters({
+        prompt: 'select_account',
+        redirect_uri: window.location.origin
+      });
+      
+      await signInWithRedirect(auth, googleProvider);
+      // User will be redirected to Google, then back to your app
+      // The result will be handled in the useEffect above
+    } catch (error: any) {
+      console.error('Google redirect sign-in error:', error);
+      setError('Failed to initiate sign-in. Please try again.');
       setLoading(false);
     }
   };
@@ -138,7 +204,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     loading,
     error,
-    signInWithGoogle,
+    signInWithGoogle, // Popup method (with COOP handling)
+    signInWithGoogleRedirect, // Redirect method (recommended)
     signOut,
     clearError,
   };
