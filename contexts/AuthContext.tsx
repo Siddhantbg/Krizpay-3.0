@@ -52,12 +52,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const parsedUser = JSON.parse(storedUser);
         console.log('Restored user from localStorage:', parsedUser.email || 'Unknown email');
         // Set initial user state from localStorage to prevent flicker
-        setUser({
+        // Create a partial user object and cast it to unknown first, then to User to avoid TypeScript errors
+        const partialUser = {
           uid: parsedUser.uid,
           email: parsedUser.email,
           displayName: parsedUser.displayName,
           photoURL: parsedUser.photoURL,
-          // Add these required properties with placeholder values
           emailVerified: false,
           isAnonymous: false,
           metadata: {},
@@ -69,7 +69,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           getIdTokenResult: async () => ({ token: '', claims: {}, expirationTime: '', authTime: '', issuedAtTime: '', signInProvider: null, signInSecondFactor: null }),
           reload: async () => {},
           toJSON: () => ({})
-        } as User);
+        };
+        
+        // Cast to unknown first, then to User as suggested by the error message
+        setUser(partialUser as unknown as User);
       } catch (e) {
         console.error('Failed to parse stored user:', e);
         localStorage.removeItem('krizpay-auth-user');
