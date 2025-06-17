@@ -8,7 +8,7 @@ import {
   signOut as firebaseSignOut, 
   onAuthStateChanged,
   GoogleAuthProvider,
-  UserCredential
+  signInWithPopup
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase.config';
 import { useRouter } from 'next/navigation';
@@ -17,7 +17,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
-  signInWithGoogle: () => Promise<void>; // Changed to redirect only
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
   isRedirecting: boolean;
@@ -42,230 +42,203 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hasCheckedRedirect, setHasCheckedRedirect] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    // First, try to restore user from localStorage if available
-    const storedUser = localStorage.getItem('krizpay-auth-user');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        console.log('Restored user from localStorage:', parsedUser.email || 'Unknown email');
-        // Set initial user state from localStorage to prevent flicker
-        // Create a partial user object and cast it to unknown first, then to User to avoid TypeScript errors
-        const partialUser = {
-          uid: parsedUser.uid,
-          email: parsedUser.email,
-          displayName: parsedUser.displayName,
-          photoURL: parsedUser.photoURL,
-          emailVerified: false,
-          isAnonymous: false,
-          metadata: {},
-          providerData: [],
-          refreshToken: '',
-          tenantId: null,
-          delete: async () => { throw new Error('Not implemented'); },
-          getIdToken: async () => '',
-          getIdTokenResult: async () => ({ token: '', claims: {}, expirationTime: '', authTime: '', issuedAtTime: '', signInProvider: null, signInSecondFactor: null }),
-          reload: async () => {},
-          toJSON: () => ({})
-        };
-        
-        // Cast to unknown first, then to User as suggested by the error message
-        setUser(partialUser as unknown as User);
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
-        localStorage.removeItem('krizpay-auth-user');
-      }
+  // Set auth cookies helper function
+  const setAuthCookies = async (user: User) => {
+    try {
+      const idToken = await user.getIdToken();
+      const cookieOptions = 'path=/; max-age=3600; samesite=strict';
+      
+      // Set multiple cookie formats for compatibility
+      document.cookie = `auth-token=${idToken}; ${cookieOptions}`;
+      document.cookie = `firebase-auth-token=${idToken}; ${cookieOptions}`;
+      document.cookie = `__session=${idToken}; ${cookieOptions}`;
+      
+      console.log('🍪 Auth cookies set successfully');
+    } catch (error) {
+      console.error('❌ Failed to set auth cookies:', error);
     }
+  };
 
-    // Handle redirect result first, before setting up auth state listener
-    const handleRedirectResult = async () => {
-      try {
-        console.log('Checking for redirect result...');
-        const result = await getRedirectResult(auth);
+  // Clear auth cookies helper function
+  const clearAuthCookies = () => {
+    const expiredCookie = 'path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = `auth-token=; ${expiredCookie}`;
+    document.cookie = `firebase-auth-token=; ${expiredCookie}`;
+    document.cookie = `__session=; ${expiredCookie}`;
+    
+    localStorage.removeItem('krizpay-auth-user');
+    localStorage.removeItem('krizpay-auth-token');
+    
+    console.log('🧹 Auth cookies and storage cleared');
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      console.log('🔍 AuthContext: Starting auth initialization...');
+
+      // Only check redirect result once
+      if (!hasCheckedRedirect) {
+        setHasCheckedRedirect(true);
         
-        if (result) {
-          console.log('Redirect sign-in successful:', result.user);
-          
-          // Get additional user info
-          const credential = GoogleAuthProvider.credentialFromResult(result);
-          const token = credential?.accessToken;
-          
-          // Set auth cookies for middleware access
-          if (result.user) {
-            const idToken = await result.user.getIdToken();
-            document.cookie = `auth-token=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
-            document.cookie = `firebase-auth-token=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
-            document.cookie = `__session=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
-          }
-          
-          // Store additional auth info if needed
-          if (token) {
-            localStorage.setItem('krizpay-auth-token', token);
-          }
-          
-          // Store user info in localStorage for persistence
-          localStorage.setItem('krizpay-auth-user', JSON.stringify({
-            uid: result.user.uid,
-            email: result.user.email,
-            displayName: result.user.displayName,
-            photoURL: result.user.photoURL,
-          }));
-          
-          // Set user state immediately
-          setUser(result.user);
-          
-          // Clear any existing errors
-          setError(null);
-          setIsRedirecting(false);
-          
-          // Get redirect path from URL if present
-          const params = new URLSearchParams(window.location.search);
-          const redirectPath = params.get('redirect') || '/dashboard';
-          
-          // Redirect after successful sign-in
-          console.log(`Redirecting to: ${redirectPath}`);
-          router.push(redirectPath);
-        } else {
-          console.log('No redirect result found');
-          setLoading(false);
-        }
-      } catch (error: any) {
-        console.error('Redirect result error:', error);
-        setError(`Failed to complete sign-in: ${error.message || 'Unknown error'}`);
-        setIsRedirecting(false);
-        setLoading(false);
-      }
-    };
-
-    // Process redirect result immediately
-    handleRedirectResult();
-
-    // Then set up the auth state listener
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user?.email || 'No user');
-      
-      // Update user state
-      setUser(user);
-      setLoading(false);
-      
-      // Update auth cookies and localStorage
-      if (user) {
         try {
-          const idToken = await user.getIdToken();
-          // Set multiple cookies for better compatibility
-          document.cookie = `auth-token=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
-          document.cookie = `firebase-auth-token=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
-          document.cookie = `__session=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
+          console.log('🔄 Checking for redirect result...');
+          const result = await getRedirectResult(auth);
           
-          // Store auth state in localStorage for persistence
-          localStorage.setItem('krizpay-auth-user', JSON.stringify({
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-          }));
-        } catch (e) {
-          console.error('Failed to set auth cookie:', e);
+          if (result?.user && mounted) {
+            console.log('🎉 Redirect result found:', result.user.email);
+            
+            // Set cookies immediately
+            await setAuthCookies(result.user);
+            
+            // Update state
+            setUser(result.user);
+            setError(null);
+            setIsRedirecting(false);
+            setLoading(false);
+            
+            // Get redirect path and navigate
+            const params = new URLSearchParams(window.location.search);
+            const redirectPath = params.get('redirect') || '/dashboard';
+            
+            console.log(`✅ Redirecting to: ${redirectPath}`);
+            router.push(redirectPath);
+            return; // Don't set up auth listener yet
+          } else {
+            console.log('🤷‍♂️ No redirect result found');
+          }
+        } catch (error: any) {
+          console.error('❌ Redirect result error:', error);
+          setError(`Sign-in failed: ${error.message}`);
+          setIsRedirecting(false);
         }
-      } else {
-        // Clear auth cookies and local storage
-        document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        document.cookie = 'firebase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        localStorage.removeItem('krizpay-auth-user');
-        localStorage.removeItem('krizpay-auth-token');
       }
-    });
 
-    return () => {
-      unsubscribe();
+      // Set up auth state listener
+      console.log('👂 Setting up auth state listener...');
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (!mounted) return;
+
+        console.log('🔔 Auth state changed:', firebaseUser?.email || 'No user');
+        
+        if (firebaseUser) {
+          // User is signed in
+          await setAuthCookies(firebaseUser);
+          setUser(firebaseUser);
+        } else {
+          // User is signed out
+          clearAuthCookies();
+          setUser(null);
+        }
+        
+        setLoading(false);
+        setIsRedirecting(false);
+      });
+
+      // Clean up function
+      return () => {
+        console.log('🧹 Cleaning up auth listener');
+        unsubscribe();
+      };
     };
-  }, [router]);
 
-  // ONLY REDIRECT METHOD - NO POPUP TO AVOID COOP ISSUES
+    const cleanup = initializeAuth();
+    
+    return () => {
+      mounted = false;
+      cleanup.then(cleanupFn => cleanupFn?.());
+    };
+  }, [router, hasCheckedRedirect]);
+
+  // Use popup for better reliability, fallback to redirect
   const signInWithGoogle = async (): Promise<void> => {
     try {
       setError(null);
-      setIsRedirecting(true);
+      setLoading(true);
       
-      console.log('Initiating Google sign-in with redirect...');
-      
-      // Clear any existing auth data before starting a new sign-in
-      localStorage.removeItem('krizpay-auth-user');
-      localStorage.removeItem('krizpay-auth-token');
-      document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'firebase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      
-      // Get the current URL to extract any redirect parameter
-      const params = new URLSearchParams(window.location.search);
-      const redirectPath = params.get('redirect');
-      
-      // Configure provider for redirect with proper parameters
-      googleProvider.setCustomParameters({
-        prompt: 'select_account',
-        // Ensure redirect URI is properly set to current origin
-        redirect_uri: window.location.origin,
-        // Add state parameter to help with redirect handling
-        // Include the redirect path in the state if available
-        state: redirectPath ? `redirect=${redirectPath}` : Date.now().toString()
-      });
-      
-      // Add additional scopes if needed
-      googleProvider.addScope('profile');
-      googleProvider.addScope('email');
-      
-      // Initiate the redirect flow
-      await signInWithRedirect(auth, googleProvider);
-      
-      // User will be redirected to Google, then back to your app
-      // The result will be handled in the useEffect above
-      console.log('Redirect initiated successfully');
+      console.log('🚀 Starting Google sign-in...');
+
+      // Clear any existing auth data
+      clearAuthCookies();
+
+      // Try popup first (more reliable)
+      try {
+        console.log('🪟 Attempting popup sign-in...');
+        const result = await signInWithPopup(auth, googleProvider);
+        
+        if (result.user) {
+          console.log('✅ Popup sign-in successful:', result.user.email);
+          
+          // Set cookies immediately
+          await setAuthCookies(result.user);
+          
+          // Get redirect path
+          const params = new URLSearchParams(window.location.search);
+          const redirectPath = params.get('redirect') || '/dashboard';
+          
+          console.log(`🎯 Redirecting to: ${redirectPath}`);
+          
+          // Force navigation to dashboard
+          window.location.href = redirectPath;
+          return;
+        }
+      } catch (popupError: any) {
+        console.warn('⚠️ Popup failed, trying redirect...', popupError.message);
+        
+        // If popup fails, fall back to redirect
+        if (popupError.code === 'auth/popup-blocked' || 
+            popupError.code === 'auth/popup-closed-by-user' ||
+            popupError.code === 'auth/cancelled-popup-request') {
+          
+          console.log('🔄 Falling back to redirect method...');
+          setIsRedirecting(true);
+          
+          // Configure provider
+          googleProvider.setCustomParameters({
+            prompt: 'select_account'
+          });
+          
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } else {
+          throw popupError;
+        }
+      }
       
     } catch (error: any) {
-      console.error('Google redirect sign-in error:', error);
-      setError(`Failed to initiate sign-in: ${error.message || 'Unknown error'}`);
+      console.error('❌ Google sign-in error:', error);
+      setError(`Sign-in failed: ${error.message}`);
       setIsRedirecting(false);
-      setLoading(false); // Ensure loading state is reset on error
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async (): Promise<void> => {
     try {
       setLoading(true);
-      setError(null);
+      console.log('👋 Signing out...');
       
-      console.log('Signing out user...');
-      
-      // Clear local storage and cookies first
-      localStorage.removeItem('krizpay-auth-user');
-      localStorage.removeItem('krizpay-auth-token');
-      document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'firebase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      
-      // Set user to null before actual signout
-      setUser(null);
+      // Clear auth data first
+      clearAuthCookies();
       
       // Sign out from Firebase
       await firebaseSignOut(auth);
       
-      console.log('Sign-out successful');
-      
-      // Redirect to home page
+      console.log('✅ Sign-out successful');
       router.push('/');
-    } catch (error: any) {
-      console.error('Sign-out error:', error);
-      setError(`Failed to sign out: ${error.message || 'Unknown error'}`);
       
-      // Ensure localStorage and cookies are cleared even if Firebase signOut fails
-      localStorage.removeItem('krizpay-auth-user');
-      localStorage.removeItem('krizpay-auth-token');
-      document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'firebase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch (error: any) {
+      console.error('❌ Sign-out error:', error);
+      setError(`Sign-out failed: ${error.message}`);
+      
+      // Force clear auth data even if signOut fails
+      clearAuthCookies();
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -279,7 +252,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     loading,
     error,
-    signInWithGoogle, // Now only uses redirect (NO COOP ISSUES)
+    signInWithGoogle,
     signOut,
     clearError,
     isRedirecting,

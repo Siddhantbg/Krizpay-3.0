@@ -16,51 +16,44 @@ const SignInPage: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const redirectPath = params.get('redirect') || '/dashboard';
     
-    console.log(`SignInPage: Redirect parameter is set to: ${redirectPath}`);
+    console.log(`🎯 SignInPage: Redirect parameter is set to: ${redirectPath}`);
     
     // Redirect if already authenticated
-    if (user) {
-      console.log(`User already authenticated, redirecting to: ${redirectPath}`);
+    if (user && !loading) {
+      console.log(`✅ User already authenticated (${user.email}), redirecting to: ${redirectPath}`);
       router.push(redirectPath);
       return;
     }
 
-    // Check for redirect result on page load
-    const checkRedirectResult = async () => {
-      try {
-        // This is just a check, the actual handling is in AuthContext
-        console.log('SignInPage: Checking for redirect result...');
-        // Note: The actual redirect result handling happens in AuthContext.tsx
-        // This is just for logging purposes
-      } catch (error) {
-        console.error('SignInPage: Error checking redirect result:', error);
-      }
-    };
-    
-    checkRedirectResult();
-
-    // Page entrance animation
-    const tl = gsap.timeline();
-    
-    tl.fromTo('.signin-container', 
-      { opacity: 0, y: 50 },
-      { opacity: 1, y: 0, duration: 1, ease: 'power3.out' }
-    )
-    .fromTo('.signin-card',
-      { opacity: 0, scale: 0.9 },
-      { opacity: 1, scale: 1, duration: 0.8, ease: 'back.out(1.7)' },
-      '-=0.5'
-    )
-    .fromTo('.feature-item',
-      { opacity: 0, x: -30 },
-      { opacity: 1, x: 0, duration: 0.6, stagger: 0.1, ease: 'power2.out' },
-      '-=0.3'
-    );
-  }, [user, router]);
+    // Page entrance animation (only if user is not authenticated)
+    if (!user) {
+      const tl = gsap.timeline();
+      
+      tl.fromTo('.signin-container', 
+        { opacity: 0, y: 50 },
+        { opacity: 1, y: 0, duration: 1, ease: 'power3.out' }
+      )
+      .fromTo('.signin-card',
+        { opacity: 0, scale: 0.9 },
+        { opacity: 1, scale: 1, duration: 0.8, ease: 'back.out(1.7)' },
+        '-=0.5'
+      )
+      .fromTo('.feature-item',
+        { opacity: 0, x: -30 },
+        { opacity: 1, x: 0, duration: 0.6, stagger: 0.1, ease: 'power2.out' },
+        '-=0.3'
+      );
+    }
+  }, [user, loading, router]);
 
   const handleGoogleSignIn = async () => {
-    clearError();
-    await signInWithGoogle();
+    try {
+      console.log('🚀 SignInPage: Starting Google sign-in...');
+      clearError();
+      await signInWithGoogle();
+    } catch (error) {
+      console.error('❌ SignInPage: Sign-in error:', error);
+    }
   };
 
   const features = [
@@ -83,6 +76,21 @@ const SignInPage: React.FC = () => {
 
   // Determine loading state (either general loading or redirecting)
   const isLoading = loading || isRedirecting;
+
+  // Don't render the sign-in form if user is already authenticated
+  if (user && !loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-dark-bg via-gray-900 to-dark-bg flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center mx-auto">
+            <ArrowRight className="w-8 h-8 text-green-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white">Already Signed In</h2>
+          <p className="text-text-secondary">Redirecting you to the dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-bg via-gray-900 to-dark-bg flex items-center justify-center p-4">
@@ -156,11 +164,12 @@ const SignInPage: React.FC = () => {
                   <div>
                     <p className="text-red-400 text-sm font-medium">Sign-in Error</p>
                     <p className="text-red-300 text-sm mt-1">{error}</p>
-                    {error.includes('Cross-Origin-Opener-Policy') && (
-                      <p className="text-red-300 text-xs mt-2">
-                        This should be fixed now with redirect authentication.
-                      </p>
-                    )}
+                    <button 
+                      onClick={clearError}
+                      className="text-red-300 text-xs mt-2 underline hover:text-red-200"
+                    >
+                      Dismiss
+                    </button>
                   </div>
                 </div>
               )}
@@ -173,6 +182,19 @@ const SignInPage: React.FC = () => {
                     <p className="text-blue-400 text-sm font-medium">Redirecting to Google</p>
                     <p className="text-blue-300 text-sm mt-1">
                       You'll be redirected to Google's secure sign-in page...
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Loading State */}
+              {loading && !isRedirecting && (
+                <div className="bg-primary-purple/10 border border-primary-purple/20 rounded-xl p-4 flex items-start space-x-3">
+                  <div className="w-5 h-5 border-2 border-primary-purple/30 border-t-primary-purple rounded-full animate-spin flex-shrink-0 mt-0.5"></div>
+                  <div>
+                    <p className="text-primary-purple text-sm font-medium">Setting up authentication...</p>
+                    <p className="text-text-secondary text-sm mt-1">
+                      Please wait while we prepare your secure sign-in.
                     </p>
                   </div>
                 </div>
@@ -192,7 +214,7 @@ const SignInPage: React.FC = () => {
                 ) : loading ? (
                   <div className="flex items-center space-x-3">
                     <div className="w-5 h-5 border-2 border-gray-400 border-t-gray-900 rounded-full animate-spin"></div>
-                    <span>Signing in...</span>
+                    <span>Getting ready...</span>
                   </div>
                 ) : (
                   <div className="flex items-center space-x-3">
@@ -202,6 +224,21 @@ const SignInPage: React.FC = () => {
                 )}
               </Button>
 
+              {/* Authentication Status */}
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3">
+                <div className="flex items-start space-x-2">
+                  <ExternalLink className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-green-400 text-xs font-medium">
+                      Smart Authentication Mode
+                    </p>
+                    <p className="text-green-300 text-xs mt-1">
+                      Popup first, then secure redirect if needed. No COOP issues! 🎉
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Divider */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -209,7 +246,7 @@ const SignInPage: React.FC = () => {
                 </div>
                 <div className="relative flex justify-center text-sm">
                   <span className="px-4 bg-gray-900/50 text-text-secondary">
-                    Secure redirect authentication (no popup issues)
+                    Powered by Firebase Auth
                   </span>
                 </div>
               </div>
@@ -225,16 +262,6 @@ const SignInPage: React.FC = () => {
                       Your information is never shared with third parties.
                     </p>
                   </div>
-                </div>
-              </div>
-
-              {/* Authentication Method Notice */}
-              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3">
-                <div className="flex items-start space-x-2">
-                  <ExternalLink className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-green-400 text-xs">
-                    <strong>Redirect Authentication:</strong> You'll be safely redirected to Google's secure sign-in page, then brought back to complete your login.
-                  </p>
                 </div>
               </div>
 
