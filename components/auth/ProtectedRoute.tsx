@@ -20,9 +20,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   useEffect(() => {
     // Only redirect if we're not loading and there's no user
     if (!loading && !user) {
-      console.log('No authenticated user found, redirecting to signin page');
       // Add the current path as a redirect parameter
       const currentPath = window.location.pathname;
+      console.log(`ProtectedRoute: No authenticated user found, redirecting to signin with redirect=${currentPath}`);
       router.push(`/signin?redirect=${encodeURIComponent(currentPath)}`);
     }
   }, [user, loading, router]);
@@ -30,12 +30,23 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Check for auth token in localStorage as a fallback
   useEffect(() => {
     if (!user && !loading) {
+      // Check multiple sources for authentication
       const storedUser = localStorage.getItem('krizpay-auth-user');
-      if (!storedUser) {
-        console.log('No stored user found in localStorage');
+      const authToken = document.cookie.includes('auth-token=') || 
+                       document.cookie.includes('firebase-auth-token=') || 
+                       document.cookie.includes('__session=');
+      
+      if (!storedUser && !authToken) {
+        console.log('ProtectedRoute: No stored user or auth token found');
+        // Add the current path as a redirect parameter
+        const currentPath = window.location.pathname;
+        router.push(`/signin?redirect=${encodeURIComponent(currentPath)}`);
+      } else if (storedUser && !user) {
+        console.log('ProtectedRoute: Found stored user but no active user, refreshing page to restore session');
+        window.location.reload(); // Force reload to restore session
       }
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   // Show loading state
   if (loading) {

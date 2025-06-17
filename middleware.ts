@@ -32,10 +32,11 @@ export function middleware(request: NextRequest) {
   
   // For debugging
   console.log(`Middleware: Path=${pathname}, Protected=${isProtectedRoute}, Auth=${isAuthenticated}`);
+  console.log(`Middleware: Cookies - Firebase=${!!firebaseAuthCookie}, Auth=${!!authToken}, Session=${!!sessionCookie}`);
   
   // If accessing a protected route without authentication, redirect to signin
   if (isProtectedRoute && !isAuthenticated) {
-    console.log(`Redirecting unauthenticated user from ${pathname} to signin`);
+    console.log(`Middleware: Redirecting unauthenticated user from ${pathname} to signin`);
     const signInUrl = new URL('/signin', request.url);
     signInUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(signInUrl);
@@ -43,7 +44,7 @@ export function middleware(request: NextRequest) {
 
   // If accessing signin page while authenticated, redirect to dashboard
   if (pathname === '/signin' && isAuthenticated) {
-    console.log('Redirecting authenticated user from signin to dashboard');
+    console.log('Middleware: Redirecting authenticated user from signin to dashboard');
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

@@ -16,6 +16,8 @@ const SignInPage: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const redirectPath = params.get('redirect') || '/dashboard';
     
+    console.log(`SignInPage: Redirect parameter is set to: ${redirectPath}`);
+    
     // Redirect if already authenticated
     if (user) {
       console.log(`User already authenticated, redirecting to: ${redirectPath}`);
@@ -28,6 +30,8 @@ const SignInPage: React.FC = () => {
       try {
         // This is just a check, the actual handling is in AuthContext
         console.log('SignInPage: Checking for redirect result...');
+        // Note: The actual redirect result handling happens in AuthContext.tsx
+        // This is just for logging purposes
       } catch (error) {
         console.error('SignInPage: Error checking redirect result:', error);
       }

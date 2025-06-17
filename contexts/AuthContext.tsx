@@ -51,8 +51,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const parsedUser = JSON.parse(storedUser);
         console.log('Restored user from localStorage:', parsedUser.email || 'Unknown email');
-        // Note: This doesn't actually authenticate the user, just restores UI state
-        // The actual auth state will be confirmed by onAuthStateChanged
+        // Set initial user state from localStorage to prevent flicker
+        setUser({
+          uid: parsedUser.uid,
+          email: parsedUser.email,
+          displayName: parsedUser.displayName,
+          photoURL: parsedUser.photoURL,
+          // Add these required properties with placeholder values
+          emailVerified: false,
+          isAnonymous: false,
+          metadata: {},
+          providerData: [],
+          refreshToken: '',
+          tenantId: null,
+          delete: async () => { throw new Error('Not implemented'); },
+          getIdToken: async () => '',
+          getIdTokenResult: async () => ({ token: '', claims: {}, expirationTime: '', authTime: '', issuedAtTime: '', signInProvider: null, signInSecondFactor: null }),
+          reload: async () => {},
+          toJSON: () => ({})
+        } as User);
       } catch (e) {
         console.error('Failed to parse stored user:', e);
         localStorage.removeItem('krizpay-auth-user');
@@ -76,12 +93,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (result.user) {
             const idToken = await result.user.getIdToken();
             document.cookie = `auth-token=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
+            document.cookie = `firebase-auth-token=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
+            document.cookie = `__session=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
           }
           
           // Store additional auth info if needed
           if (token) {
             localStorage.setItem('krizpay-auth-token', token);
           }
+          
+          // Store user info in localStorage for persistence
+          localStorage.setItem('krizpay-auth-user', JSON.stringify({
+            uid: result.user.uid,
+            email: result.user.email,
+            displayName: result.user.displayName,
+            photoURL: result.user.photoURL,
+          }));
           
           // Set user state immediately
           setUser(result.user);
@@ -90,16 +117,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setError(null);
           setIsRedirecting(false);
           
-          // Redirect to dashboard after successful sign-in
-          console.log('Redirecting to dashboard...');
-          router.push('/dashboard');
+          // Get redirect path from URL if present
+          const params = new URLSearchParams(window.location.search);
+          const redirectPath = params.get('redirect') || '/dashboard';
+          
+          // Redirect after successful sign-in
+          console.log(`Redirecting to: ${redirectPath}`);
+          router.push(redirectPath);
         } else {
           console.log('No redirect result found');
+          setLoading(false);
         }
       } catch (error: any) {
         console.error('Redirect result error:', error);
-        setError('Failed to complete sign-in. Please try again.');
+        setError(`Failed to complete sign-in: ${error.message || 'Unknown error'}`);
         setIsRedirecting(false);
+        setLoading(false);
       }
     };
 
@@ -107,7 +140,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     handleRedirectResult();
 
     // Then set up the auth state listener
-    // In the onAuthStateChanged listener
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('Auth state changed:', user?.email || 'No user');
       
@@ -115,25 +147,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(user);
       setLoading(false);
       
-      // Update auth cookies for middleware
+      // Update auth cookies and localStorage
       if (user) {
         try {
           const idToken = await user.getIdToken();
+          // Set multiple cookies for better compatibility
           document.cookie = `auth-token=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
+          document.cookie = `firebase-auth-token=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
+          document.cookie = `__session=${idToken}; path=/; secure; samesite=strict; max-age=3600`;
+          
+          // Store auth state in localStorage for persistence
+          localStorage.setItem('krizpay-auth-user', JSON.stringify({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+          }));
         } catch (e) {
           console.error('Failed to set auth cookie:', e);
         }
-        
-        // Store auth state in localStorage for persistence
-        localStorage.setItem('krizpay-auth-user', JSON.stringify({
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-        }));
       } else {
         // Clear auth cookies and local storage
         document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'firebase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         localStorage.removeItem('krizpay-auth-user');
         localStorage.removeItem('krizpay-auth-token');
       }
@@ -152,11 +189,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('Initiating Google sign-in with redirect...');
       
-      // In the signInWithGoogle function
       // Clear any existing auth data before starting a new sign-in
       localStorage.removeItem('krizpay-auth-user');
       localStorage.removeItem('krizpay-auth-token');
       document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'firebase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      
+      // Get the current URL to extract any redirect parameter
+      const params = new URLSearchParams(window.location.search);
+      const redirectPath = params.get('redirect');
       
       // Configure provider for redirect with proper parameters
       googleProvider.setCustomParameters({
@@ -164,7 +206,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Ensure redirect URI is properly set to current origin
         redirect_uri: window.location.origin,
         // Add state parameter to help with redirect handling
-        state: Date.now().toString()
+        // Include the redirect path in the state if available
+        state: redirectPath ? `redirect=${redirectPath}` : Date.now().toString()
       });
       
       // Add additional scopes if needed
@@ -182,6 +225,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Google redirect sign-in error:', error);
       setError(`Failed to initiate sign-in: ${error.message || 'Unknown error'}`);
       setIsRedirecting(false);
+      setLoading(false); // Ensure loading state is reset on error
     }
   };
 
@@ -190,10 +234,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
       
+      console.log('Signing out user...');
+      
       // Clear local storage and cookies first
       localStorage.removeItem('krizpay-auth-user');
       localStorage.removeItem('krizpay-auth-token');
       document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'firebase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       
       // Set user to null before actual signout
       setUser(null);
@@ -208,6 +256,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.error('Sign-out error:', error);
       setError(`Failed to sign out: ${error.message || 'Unknown error'}`);
+      
+      // Ensure localStorage and cookies are cleared even if Firebase signOut fails
+      localStorage.removeItem('krizpay-auth-user');
+      localStorage.removeItem('krizpay-auth-token');
+      document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'firebase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = '__session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     } finally {
       setLoading(false);
     }
